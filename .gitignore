@@ -5,4 +5,7 @@ __pycache__/
 
 
 *.mp4
+*.avi
 yolov3.weights
+ocr_imgs
+imgs

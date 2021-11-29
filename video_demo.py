@@ -62,7 +62,7 @@ def write(x, img):
     # x1 = x[1:3].int().cpu().detach().numpy()[0]
     # y1 = x[1:3].int().cpu().detach().numpy()[1]
     # x2 = x[3:5].int().cpu().detach().numpy()[0]
-    # y2 = x[3:5].int().cpu().detach().numpy()[0]
+    # y2 = x[3:5].int().cpu().detach().numpy()[1]
     # score = 0.5
 
     # detections.append([x1, y1, x2, y2, score])
@@ -73,7 +73,7 @@ def write(x, img):
     cv2.rectangle(img, c1, c2,color, 1)
     t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
     c2 = c1[0] + t_size[0] + 3, c1[1] + t_size[1] + 4
-    cv2.rectangle(img, c1, c2,color, -1)
+    cv2.rectangle(img, c1, c2, color, -1)
     cv2.putText(img, label, (c1[0], c1[1] + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 1, [225,255,255], 1);
     return img
 
@@ -142,7 +142,9 @@ if __name__ == '__main__':
     assert cap.isOpened(), 'Cannot capture source'
     
     frames = 0
-    start = time.time()    
+    start = time.time()
+    mot_tracker = Sort()
+
     while cap.isOpened():
         
         ret, frame = cap.read()
@@ -150,9 +152,7 @@ if __name__ == '__main__':
             
 
             img, orig_im, dim = prep_image(frame, inp_dim)
-            
-            im_dim = torch.FloatTensor(dim).repeat(1,2)                        
-            
+            im_dim = torch.FloatTensor(dim).repeat(1,2)
             
             if CUDA:
                 im_dim = im_dim.cuda()
@@ -172,8 +172,6 @@ if __name__ == '__main__':
                 continue
             
             
-
-            
             im_dim = im_dim.repeat(output.size(0), 1)
             scaling_factor = torch.min(inp_dim/im_dim,1)[0].view(-1,1)
             
@@ -181,7 +179,7 @@ if __name__ == '__main__':
             output[:,[2,4]] -= (inp_dim - scaling_factor*im_dim[:,1].view(-1,1))/2
             
             output[:,1:5] /= scaling_factor
-    
+
             for i in range(output.shape[0]):
                 output[i, [1,3]] = torch.clamp(output[i, [1,3]], 0.0, im_dim[i,0])
                 output[i, [2,4]] = torch.clamp(output[i, [2,4]], 0.0, im_dim[i,1])
@@ -190,9 +188,29 @@ if __name__ == '__main__':
             colors = pkl.load(open("pallete", "rb"))
 
             print(output)
+
+            output = output.cpu().detach().numpy()
+            # [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
+
+            output = np.array([np.append(i[1:5], 0.5) for i in output])
+
+            track_bbs_ids = mot_tracker.update(output)
             
-            list(map(lambda x: write(x, orig_im), output))
+            # Filter output
+            for track_bbs_id in track_bbs_ids:
+                x1 = int(track_bbs_id[0])
+                y1 = int(track_bbs_id[1])
+                x2 = int(track_bbs_id[2])
+                y2 = int(track_bbs_id[3])
+                unique_id = str(int(track_bbs_id[4]))
+                color = random.choice(colors)
+
+                cv2.rectangle(orig_im, (x1, y1), (x2, y2), color, 2)
+                t_size = cv2.getTextSize(unique_id, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
+                cv2.putText(orig_im, unique_id, (x1, y1 + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 1, [225,255,255], 1)
+
             
+            # list(map(lambda x: write(x, orig_im), output))            
             
             cv2.imshow("frame", orig_im)
             key = cv2.waitKey(1)
@@ -206,8 +224,3 @@ if __name__ == '__main__':
             
         else:
             break
-    
-
-    
-    
-
