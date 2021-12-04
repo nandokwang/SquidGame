@@ -16,8 +16,8 @@ from sg_tracker import *
 import sys
 
 
-tracker = Sort()
-print(tracker)
+# tracker = Sort(max_age=1, min_hits=3, iou_threshold=0.3)
+
 
 
 def get_test_input(input_dim, CUDA):
@@ -143,7 +143,7 @@ if __name__ == '__main__':
     
     frames = 0
     start = time.time()
-    mot_tracker = Sort()
+    mot_tracker = Sort(max_age=1, min_hits=3, iou_threshold=0.3)
 
     while cap.isOpened():
         
@@ -187,14 +187,19 @@ if __name__ == '__main__':
             classes = load_classes('data/coco.names')
             colors = pkl.load(open("pallete", "rb"))
 
-            print(output)
+            # print(output)
 
             output = output.cpu().detach().numpy()
             # [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
 
             output = np.array([np.append(i[1:5], 0.5) for i in output])
 
+            # print(output) # yolov3 output [[x1, y1, x2, y2, class],...[x1, y1, x2, y2, class]] (n, 5)
+            # print(output.shape)
+
             track_bbs_ids = mot_tracker.update(output)
+            # print(track_bbs_ids)
+            # print(track_bbs_ids.shape)
             
             # Filter output
             for track_bbs_id in track_bbs_ids:
@@ -207,7 +212,7 @@ if __name__ == '__main__':
 
                 cv2.rectangle(orig_im, (x1, y1), (x2, y2), color, 2)
                 t_size = cv2.getTextSize(unique_id, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
-                cv2.putText(orig_im, unique_id, (x1, y1 + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 1, [225,255,255], 1)
+                cv2.putText(orig_im, unique_id, (x1, y1 + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 5, [0,0,0], 5)
 
             
             # list(map(lambda x: write(x, orig_im), output))            

@@ -9,3 +9,7 @@ __pycache__/
 yolov3.weights
 ocr_imgs
 imgs
+
+
+posenet/*.mp4
+posenet/data
