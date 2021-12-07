@@ -29,9 +29,9 @@ def main():
     ocr_thresh = 0.1
     ocr_options = "outputbase digits"
     
-    ocr_unique_number_hard = [['001', 147, 200, 193, 220], # Delete later
-                                ['002', 375, 171, 416, 242], 
-                                ['003', 672, 188, 705, 209]]
+    ocr_unique_number_hard = [[147, 200, 193, 220, '001'], # Delete later
+                                [375, 171, 416, 242, '002'], 
+                                [672, 188, 705, 209, '003']]
 
     start = time.time()
     frame_count = 0
@@ -90,20 +90,22 @@ def main():
                 ys = ocr_results['top']
                 ws = ocr_results['width']
                 hs = ocr_results['height']
-                print(x1, y1, x2, y2)
-                print()
+
                 for conf, text, x, y, w, h in zip(confs, texts, xs, ys, ws, hs):
                     if float(conf) > ocr_thresh:
                         # cropped_imgs = cv2.rectangle(cropped_imgs, (x, y), (x + w, y + h), (0, 255, 0), 2)
                         # cropped_imgs = cv2.putText(cropped_imgs, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
-                        ocr_unique_number.append([text, x1+x, y1+y, x1+x+w, y1+y+h])
+                        ocr_unique_number.append([x1+x, y1+y, x1+x+w, y1+y+h, text])
                         # print(conf, text, [x, y, w ,h])
                     
 
         elif frame_count == 1:
-            number_tag = iou(track_bbs_ids, ocr_unique_number_hard)
-            [1: '001', 2: '002', 3:'003']
             print('Frame 1')
+            print(track_bbs_ids)
+            print(np.array(ocr_unique_number_hard))
+            # number_tag = iou(track_bbs_ids, ocr_unique_number_hard)
+            # [1: '001', 2: '002', 3:'003']
+            
 
 
         # print(len(track_bbs_ids))
