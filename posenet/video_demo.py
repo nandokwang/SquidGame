@@ -103,6 +103,7 @@ def main():
             print('Frame 1')
             print(track_bbs_ids)
             print(np.array(ocr_unique_number_hard))
+            
             # number_tag = iou(track_bbs_ids, ocr_unique_number_hard)
             # [1: '001', 2: '002', 3:'003']
             
