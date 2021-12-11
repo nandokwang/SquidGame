@@ -40,7 +40,7 @@ for i, img_input in enumerate(img_inputs):
 
 
   """
-  miss 타겟 mapping module
+  miss 타겟 Exception handling module
   """
   # 한명의 정보만 잃어버렸을 때
   if det_bboxes_ids.shape[0] == num_of_participants-1:
@@ -54,7 +54,7 @@ for i, img_input in enumerate(img_inputs):
 
 
   """
-  처형 module
+  처형 module(제어문)
   """
     if 움직임이 있는 참가자의 경우:
         excute(movement)
@@ -63,14 +63,15 @@ for i, img_input in enumerate(img_inputs):
         # output: [{sort_id: [last_coord, movement, is_alive, goal]}, ..., sort_id: []]
 
   """
-  통과자 module (밑에다가 라인 하나그려놓고, 넘어가면, excute() 안돌림)
+  통과자 module (밑에다가 라인 기준으로, 넘어가면, excute() 안돌림)
   """
     if 사망하지 않은 참가자 중에서:
         if any(foot_coord) < y축라인값:
             cv2.puttext(f'{matched_id_and_number[sort_id]}번 참가자 통과')
         # output: [{sort_id: [번호표, last_coord, movement, is_alive, goal]}, ..., sort_id: []]
         
-      
+
+
 """
 Memo
 Camera는 몸통에 달아야함(지속적으로 촬영 필요)

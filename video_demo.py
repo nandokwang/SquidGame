@@ -23,9 +23,8 @@ def main():
     model = model.cuda()
     output_stride = model.output_stride
 
-    # cap = cv2.VideoCapture('example.mp4')
     tracker = Sort()
-    cap = cv2.VideoCapture('./video/demo_dance_3p_number_tag_450p.mp4')
+    cap = cv2.VideoCapture('./video/demo_dance_3p_number_tag_1080p.mp4')
     ocr_thresh = 0.1
     ocr_options = "outputbase digits"
     
@@ -36,6 +35,7 @@ def main():
     start = time.time()
     frame_count = 0
     num_frames = 0
+    status = dict()
 
     # out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'MP4V'), 30.0, (640,480))
 
@@ -57,9 +57,26 @@ def main():
                 max_pose_detections=10,
                 min_pose_score=0.15)
 
+            # print("before", keypoint_coords[0])
+            # print(pose_scores.shape) (10, )
+            # print(keypoint_scores.shape) (10, )
+            # print(keypoint_coords.shape) (10, 17, 2)
+            # print(pose_scores[0])
+            # print(keypoint_scores[0])
+            # print(keypoint_coords[0])
+            print(keypoint_coords[:, 6, 1]) # (y, x)
+            sorted_idx = np.argsort(keypoint_coords[:, :, 0])
+            # print(sorted_idx)
+            # keypoint_coords = keypoint_coords[sorted_idx]
+            # pose_scores = pose_scores[sorted_idx]
+            # keypoint_coords = keypoint_coords[sorted_idx]
+            # print("after", keypoint_coords[0])
+
+            # print(pose_scores, keypoint_scores, keypoint_coords)
+
         keypoint_coords *= output_scale
 
-
+        # 어깨+엉덩이 좌표에서 Bbox 좌표 뽑아내기(for OCR)
         bbox_for_tracker = []
         for pi in range(len(pose_scores)):
 
@@ -75,8 +92,11 @@ def main():
             
             bbox_for_tracker.append([x1, y1, x2, y2, 0.5])
 
-        track_bbs_ids = tracker.update(np.array(bbox_for_tracker[:3]))
+        # SORT Tracking
+        track_bbs_ids = tracker.update(np.array(bbox_for_tracker[:3])) #하드코드
 
+
+        # 0번프레임: Crop -> OCR실행 및 OCR 정보 리스트로 담기
         if frame_count == 0:
             ocr_unique_number = []
             # crop_img = img[y:y+h, x:x+w]
@@ -101,6 +121,7 @@ def main():
                         ocr_unique_number.append([x1+x, y1+y, x1+x+w, y1+y+h, int(text)])
                         # print(conf, text, [x, y, w ,h])
 
+        # 1번프레임: OCR 번호표 vs SORT_ID IOU 매칭
         elif frame_count == 1:
 
             iou_matrix = iou_batch(track_bbs_ids[:, 0:4], np.array(ocr_unique_number_hard)[:, 0:4])
@@ -110,8 +131,10 @@ def main():
 
             for i, mi in enumerate(match_iou):
                 match_tag[int(track_bbs_ids[i,4])] = str(mi+1).zfill(3)
+                status[int(track_bbs_ids[i,4])] = [np.expand_dims(keypoint_coords[i,:,:], 0), 0, 0, 0]
+                
 
-
+        # SORT ID 시각화 및 아웃풋 리턴
         for track_bbs_id in track_bbs_ids:
             x1 = int(track_bbs_id[0])
             y1 = int(track_bbs_id[1])
@@ -120,12 +143,29 @@ def main():
             unique_id = str(int(track_bbs_id[4]))
 
             t_size = cv2.getTextSize(unique_id, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
+            # cv2.putText(display_image, unique_id, (x1, y1 + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 5, [0,0,0], 5)
+            
             if frame_count == 0:
-                cv2.putText(display_image, unique_id, (x1, y1 + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 5, [0,0,0], 5)    
+                cv2.putText(display_image, unique_id, (x1, y1 + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 5, [0,0,0], 5)
             else:
                 cv2.putText(display_image, match_tag[int(unique_id)], (x1, y1 + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 2, [0,0,255], 2)
 
-        # Draw result
+        if frame_count > 1:
+            # 상태 갱신 모듈
+
+            status = tracker.update_status(status, keypoint_coords[0:3, :, :])
+            # break
+            # 키포인트 트래킹 movement_tracker(현재 만들고있는것)
+            status = tracker.movement_tracker(status)
+        # [{sort_id: [keypoint_coords, movement, is_dead, is_passed]}, 
+        # ..., 
+        # sort_id: []]
+        # movement=0 안움직임, movement=1 움직임
+        # is_dead=0 살음, is_dead=1 죽음
+        # is_passed=0 통과하지못함 is_passed=1 통과함
+
+
+        # Draw result(키포인트 시각화)
         overlay_image = posenet.draw_skel_and_kp(
             display_image, pose_scores, keypoint_scores, keypoint_coords,
             min_pose_score=0.15, min_part_score=0.1)
@@ -133,7 +173,7 @@ def main():
         cv2.imshow('posenet', overlay_image)
         # out.write(overlay_image)
         frame_count += 1
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(2000) & 0xFF == ord('q'):
             break
 
         num_frames += 1

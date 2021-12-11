@@ -259,6 +259,47 @@ class Sort(object):
                 self.trackers.pop(i)
         if(len(ret) > 0):
             return np.concatenate(ret)
+    
+    
+    def update_status(self, status, keypoint_coords):
+        for v, keypoint in zip(status.values(), keypoint_coords):
+            v[0] = np.append(v[0], np.expand_dims(keypoint, 0), axis=0)
+            
+            if len(v[0]) > 10:
+                v[0] = np.delete(v[0], 0, 0)
+        return status
+
+
+    def movement_tracker(self, status):
+        for i, v in enumerate(status.values()):
+            dXY = v[0][-1] - v[0][0]
+            print("[dXY]")
+            print(f'사람{i}')
+            print(v[0][-1])
+            # print(np.abs(dXY))
+            # print("shape: ", dXY.shape)
+            print()
+            
+        # print(status) # (num_participants, 17, 2)
+
+
+        # print('ah!!!!!!!!!!!!')
+        return status
+
+        # ['nose: 0, 'leftEye: 1', 'rightEye: 2', 'leftEar: 3', 'rightEar :4',
+        # 'leftShoulder: 5', 'rightShoulder: 6', 'leftElbow: 7', 
+        # 'rightElbow': 8, 'leftWrist: 9', 'rightWrist: 10', 
+        # 'leftHip: 11', 'rightHip: 12', 'leftKnee: 13', 
+        # 'rightKnee: 14', 'leftAnkle: 15', 'rightAnkle: 16']
+        # print(posenet.PART_NAMES[5], keypoint_scores[0, 5])
+        
+        # [{sort_id: [keypoint_coords, movement, is_dead, is_passed]}, 
+        # ...,
+        # sort_id: []]
+        # movement=0 안움직임, movement=1 움직임
+        # is_dead=0 살음, is_dead=1 죽음
+        # is_passed=0 통과하지못함 is_passed=1 통과함
+
         return np.empty((0, 5))
 
 
