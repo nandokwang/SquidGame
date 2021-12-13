@@ -82,7 +82,14 @@ def main():
         # SORT Tracking
         track_bbs_ids = tracker.update(np.array(bbox_for_tracker[:3])) #하드코드
 
+        kp_iou_matrix = iou_batch(track_bbs_ids[:, :4], np.array(bbox_for_tracker[:3])[:, :4])
+        kp_match_iou = np.argmax(kp_iou_matrix, axis=1)
 
+        match_kp_sortid = dict()
+
+        for i, kmi in enumerate(kp_match_iou):
+            match_kp_sortid[int(track_bbs_ids[i,4])] = np.array(keypoint_coords[kmi])
+        
         # 0번프레임: Crop -> OCR실행 및 OCR 정보 리스트로 담기
         if frame_count == 0:
             ocr_unique_number = []
@@ -116,17 +123,14 @@ def main():
 
         # 1번프레임: OCR 번호표 vs SORT_ID IOU 매칭
         elif frame_count == 1:
-            iou_matrix = iou_batch(track_bbs_ids[:, 0:4], np.array(ocr_unique_number)[:, 0:4])
-            match_iou = np.argmax(iou_matrix, axis=1)
+            ocr_iou_matrix = iou_batch(track_bbs_ids[:, 0:4], np.array(ocr_unique_number)[:, 0:4])
+            ocr_match_iou = np.argmax(ocr_iou_matrix, axis=1)
 
             match_tag = dict()
 
-            for i, mi in enumerate(match_iou):
+            for i, mi in enumerate(ocr_match_iou):
                 match_tag[int(track_bbs_ids[i,4])] = str(mi+1).zfill(3)
                 status[int(track_bbs_ids[i,4])] = [np.expand_dims(keypoint_coords[i,:,:], 0), 0, 0, 0]
-            
-            print('match tag',match_tag)
-        
 
         # SORT ID 시각화 및 아웃풋 리턴
         for track_bbs_id in track_bbs_ids:
@@ -147,7 +151,7 @@ def main():
         # 상태 갱신 모듈
         if frame_count > 1:
 
-            status = tracker.update_status(status, keypoint_coords[0:3, :, :])
+            status = tracker.update_status(status, match_kp_sortid)
             # break
             # 키포인트 트래킹 movement_tracker(현재 만들고있는것)
             status = tracker.movement_tracker(status)

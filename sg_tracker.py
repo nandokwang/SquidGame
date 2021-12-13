@@ -261,30 +261,26 @@ class Sort(object):
             return np.concatenate(ret)
     
     
-    def update_status(self, status, keypoint_coords):
-        for v, keypoint in zip(status.values(), keypoint_coords):
-            v[0] = np.append(v[0], np.expand_dims(keypoint, 0), axis=0)
-            
+    def update_status(self, status, match_kp_sortid):
+        for k, v in status.items():
+            if k in match_kp_sortid:
+                v[0] = np.append(np.array(v[0]), np.expand_dims(match_kp_sortid[k], 0), axis=0)
+            else:
+                v[0] = np.append(np.array(v[0]), np.expand_dims(np.array(v[0][-1]), 0), axis=0)
+
             if len(v[0]) > 10:
                 v[0] = np.delete(v[0], 0, 0)
         return status
 
 
-    def movement_tracker(self, status):
-        for i, v in enumerate(status.values()):
-            dXY = v[0][-1] - v[0][0]
-            print("[dXY]")
-            print(f'사람{i}')
-            print(v[0][-1])
-            print()
-            # print(np.abs(dXY))
-            # print("shape: ", dXY.shape)
-            
-            
-        # print(status) # (num_participants, 17, 2)
+    def movement_tracker(self, status, threshold=70):
+        if len(status[1][0]) == 10:
+            for k, v in status.items():
+                dXY = v[0][-1] - v[0][0]
+                if np.max(abs(dXY)) > threshold:
+                    # [{sort_id: [keypoint_coords, movement, is_dead, is_passed]},
+                    print(f'{k}번 사람이 움직임')
 
-
-        # print('ah!!!!!!!!!!!!')
         return status
 
         # ['nose: 0, 'leftEye: 1', 'rightEye: 2', 'leftEar: 3', 'rightEar :4',

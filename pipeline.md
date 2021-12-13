@@ -26,7 +26,7 @@ for i, img_input in enumerate(img_inputs):
     bboxes = get_bbox(keypoint_coord) # [[x1, y1, x2, y2], ... [x1, y1, x2, y2]]
     det_bboxes_ids = tracker.update(bboxes) # [[x1, y1, x2, y2, sort_id], ... []]
 
-# 여기까지 구현끗!!!!!
+
 
   """
   움직임 여부 check module
@@ -38,6 +38,9 @@ for i, img_input in enumerate(img_inputs):
       # 움직임의 이동평균으로 계산
       # output: [{sort_id: [last_coord, movement, is_alive, goal]}, ..., sort_id: []]
 
+# TODO Threshold 조정 및 평균, 변화율, 연속성(output자체의)
+
+# 여기까지 구현끗!!!!!
 
   """
   miss 타겟 Exception handling module
