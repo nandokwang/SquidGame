@@ -24,13 +24,13 @@ def main():
     output_stride = model.output_stride
 
     tracker = Sort()
-    cap = cv2.VideoCapture('./video/demo_dance_3p_number_tag_1080p.mp4')
+    cap = cv2.VideoCapture('./video/demo_dance_3p_number_tag_1080p.mp4') # demo_dance_3p_number_tag_1080p
     ocr_thresh = 0.1
     ocr_options = "outputbase digits"
     
-    ocr_unique_number_hard = [[147, 200, 193, 220, 1], # Delete later
-                                [375, 171, 416, 242, 2], 
-                                [672, 188, 705, 209, 3]]
+    # ocr_unique_number_hard = [[147, 200, 193, 220, 1], # Delete later
+    #                             [375, 171, 416, 242, 2], 
+    #                             [672, 188, 705, 209, 3]]
 
     start = time.time()
     frame_count = 0
@@ -57,22 +57,9 @@ def main():
                 max_pose_detections=10,
                 min_pose_score=0.15)
 
-            # print("before", keypoint_coords[0])
-            # print(pose_scores.shape) (10, )
-            # print(keypoint_scores.shape) (10, )
-            # print(keypoint_coords.shape) (10, 17, 2)
-            # print(pose_scores[0])
-            # print(keypoint_scores[0])
-            # print(keypoint_coords[0])
-            print(keypoint_coords[:, 6, 1]) # (y, x)
-            sorted_idx = np.argsort(keypoint_coords[:, :, 0])
-            # print(sorted_idx)
-            # keypoint_coords = keypoint_coords[sorted_idx]
-            # pose_scores = pose_scores[sorted_idx]
-            # keypoint_coords = keypoint_coords[sorted_idx]
-            # print("after", keypoint_coords[0])
+            # print(keypoint_coords[:, 6, 1]) # (y, x)
+            # sorted_idx = np.argsort(keypoint_coords[:, :, 0])
 
-            # print(pose_scores, keypoint_scores, keypoint_coords)
 
         keypoint_coords *= output_scale
 
@@ -100,11 +87,14 @@ def main():
         if frame_count == 0:
             ocr_unique_number = []
             # crop_img = img[y:y+h, x:x+w]
-            for bbox in bbox_for_tracker[:3]:
-                x1 = int(bbox[0])
+            for i, bbox in enumerate(bbox_for_tracker[:3]):
+                crop_weight = 20
+
+                x1 = int(bbox[0]) - crop_weight
                 y1 = int(bbox[1])
-                x2 = int(bbox[2])
+                x2 = int(bbox[2]) + crop_weight
                 y2 = int(bbox[3])
+
                 cropped_imgs = display_image[y1:y2, x1:x2, :]
                 ocr_results = pytesseract.image_to_data(cropped_imgs, output_type=Output.DICT, config=ocr_options)
                 texts = ocr_results['text']
@@ -114,17 +104,19 @@ def main():
                 ws = ocr_results['width']
                 hs = ocr_results['height']
 
+
                 for conf, text, x, y, w, h in zip(confs, texts, xs, ys, ws, hs):
                     if float(conf) > ocr_thresh:
-                        # cropped_imgs = cv2.rectangle(cropped_imgs, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                        # cropped_imgs = cv2.putText(cropped_imgs, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
+                        cropped_imgs = cv2.rectangle(cropped_imgs, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                        cropped_imgs = cv2.putText(cropped_imgs, text, (x, y+40), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
+
+                        cv2.imwrite(f'output/{i}th_person.jpg', cropped_imgs)
                         ocr_unique_number.append([x1+x, y1+y, x1+x+w, y1+y+h, int(text)])
                         # print(conf, text, [x, y, w ,h])
 
         # 1번프레임: OCR 번호표 vs SORT_ID IOU 매칭
         elif frame_count == 1:
-
-            iou_matrix = iou_batch(track_bbs_ids[:, 0:4], np.array(ocr_unique_number_hard)[:, 0:4])
+            iou_matrix = iou_batch(track_bbs_ids[:, 0:4], np.array(ocr_unique_number)[:, 0:4])
             match_iou = np.argmax(iou_matrix, axis=1)
 
             match_tag = dict()
@@ -132,7 +124,9 @@ def main():
             for i, mi in enumerate(match_iou):
                 match_tag[int(track_bbs_ids[i,4])] = str(mi+1).zfill(3)
                 status[int(track_bbs_ids[i,4])] = [np.expand_dims(keypoint_coords[i,:,:], 0), 0, 0, 0]
-                
+            
+            print('match tag',match_tag)
+        
 
         # SORT ID 시각화 및 아웃풋 리턴
         for track_bbs_id in track_bbs_ids:
@@ -150,8 +144,8 @@ def main():
             else:
                 cv2.putText(display_image, match_tag[int(unique_id)], (x1, y1 + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 2, [0,0,255], 2)
 
+        # 상태 갱신 모듈
         if frame_count > 1:
-            # 상태 갱신 모듈
 
             status = tracker.update_status(status, keypoint_coords[0:3, :, :])
             # break
@@ -170,10 +164,13 @@ def main():
             display_image, pose_scores, keypoint_scores, keypoint_coords,
             min_pose_score=0.15, min_part_score=0.1)
 
+
+
+        overlay_image = cv2.resize(overlay_image, dsize=(1000, 640), interpolation=cv2.INTER_AREA)
         cv2.imshow('posenet', overlay_image)
         # out.write(overlay_image)
         frame_count += 1
-        if cv2.waitKey(2000) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
         num_frames += 1

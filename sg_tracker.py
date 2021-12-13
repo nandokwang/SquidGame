@@ -168,7 +168,7 @@ def associate_detections_to_trackers(detections, trackers, iou_threshold=0.3):
         if a.sum(1).max() == 1 and a.sum(0).max() == 1:
             matched_indices = np.stack(np.where(a), axis=1)
         else:
-            # 시발 이게뭐지??(헝가리안알고리즘)
+            # 헝가리안알고리즘
             matched_indices = linear_assignment(-iou_matrix)
     else:
         matched_indices = np.empty(shape=(0, 2))
@@ -276,9 +276,10 @@ class Sort(object):
             print("[dXY]")
             print(f'사람{i}')
             print(v[0][-1])
+            print()
             # print(np.abs(dXY))
             # print("shape: ", dXY.shape)
-            print()
+            
             
         # print(status) # (num_participants, 17, 2)
 
