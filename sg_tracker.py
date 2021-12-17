@@ -228,7 +228,7 @@ class Sort(object):
         to_del = []
         ret = []
         for t, trk in enumerate(trks):
-            pos = self.trackers[t].predict()[0]  # 프레딕트!
+            pos = self.trackers[t].predict()[0]  # 프레딕트
             trk[:] = [pos[0], pos[1], pos[2], pos[3], 0]
             if np.any(np.isnan(pos)):
                 to_del.append(t)
@@ -236,7 +236,7 @@ class Sort(object):
         for t in reversed(to_del):
             self.trackers.pop(t)
         matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(
-            dets, trks, self.iou_threshold)  # 여기서 iou계산만함
+            dets, trks, self.iou_threshold)  # iou계산
 
         # update matched trackers with assigned detections
         for m in matched:
@@ -244,7 +244,7 @@ class Sort(object):
 
         # create and initialise new trackers for unmatched detections
         for i in unmatched_dets:
-            # 매칭안된건 여기서 칼만필터에들어가서 prediction
+            # 매칭안된건 칼만필터에서 prediction
             trk = KalmanBoxTracker(dets[i, :])
             self.trackers.append(trk)
         i = len(self.trackers)
@@ -278,9 +278,9 @@ class Sort(object):
             for k, v in status.items():
                 dXY = v[0][-1] - v[0][0]
                 if np.max(abs(dXY)) > threshold:
-                    # [{sort_id: [keypoint_coords, movement, is_dead, is_passed]},
-                    print(f'{k}번 사람이 움직임')
-
+                    status[k][1] = 1
+                else:
+                    status[k][1] = 0
         return status
 
         # ['nose: 0, 'leftEye: 1', 'rightEye: 2', 'leftEar: 3', 'rightEar :4',

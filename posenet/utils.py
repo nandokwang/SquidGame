@@ -76,7 +76,7 @@ def draw_skeleton(
 
 
 def draw_skel_and_kp(
-        img, instance_scores, keypoint_scores, keypoint_coords,
+        status, img, instance_scores, keypoint_scores, keypoint_coords,
         min_pose_score=0.5, min_part_score=0.5):
 
     out_img = img
@@ -100,4 +100,12 @@ def draw_skel_and_kp(
             out_img, cv_keypoints, outImage=np.array([]), color=(255, 255, 0),
             flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     out_img = cv2.polylines(out_img, adjacent_keypoints, isClosed=False, color=(255, 255, 0))
+    
+    # 움직임 여부 시각화
+    for k, v in status.items():
+        if v[1] == 1:
+            x1 = int(v[0][-1][0][1])
+            y1 = int(v[0][-1][0][0])
+            cv2.putText(out_img, 'Moving', (x1, y1), cv2.FONT_HERSHEY_PLAIN, 5, [255,0,0], 5)
+
     return out_img
