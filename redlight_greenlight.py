@@ -57,9 +57,6 @@ def main():
                 max_pose_detections=10,
                 min_pose_score=0.15)
 
-            # print(keypoint_coords[:, 6, 1]) # (y, x)
-            # sorted_idx = np.argsort(keypoint_coords[:, :, 0])
-
 
         keypoint_coords *= output_scale
 
@@ -67,7 +64,7 @@ def main():
         bbox_for_tracker = []
         for pi in range(len(pose_scores)):
 
-            idxs = [5, 6, 11, 12] # sholders, hips 나중에 생각해보기(SORT bbox input)
+            idxs = [5, 6, 11, 12]
 
             x = keypoint_coords[pi, idxs, 1]
             y = keypoint_coords[pi, idxs, 0] # (10, 17, 2)
@@ -152,8 +149,8 @@ def main():
         if frame_count > 1:
 
             status = tracker.update_status(status, match_kp_sortid)
-            status = tracker.movement_tracker(status)
-        # [{sort_id: [keypoint_coords, movement, is_dead, is_passed]}, 
+            status = tracker.movement_tracker(status, threshold=60)
+        # [{sort_id: [keypoint_coords, movement, is_fail, is_passed]}, 
         # ..., 
         # sort_id: []]
         # movement=0 안움직임, movement=1 움직임

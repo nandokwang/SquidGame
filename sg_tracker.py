@@ -268,13 +268,13 @@ class Sort(object):
             else:
                 v[0] = np.append(np.array(v[0]), np.expand_dims(np.array(v[0][-1]), 0), axis=0)
 
-            if len(v[0]) > 10:
+            if len(v[0]) > 20:
                 v[0] = np.delete(v[0], 0, 0)
         return status
 
 
     def movement_tracker(self, status, threshold=70):
-        if len(status[1][0]) == 10:
+        if len(status[1][0]) == 20:
             for k, v in status.items():
                 dXY = v[0][-1] - v[0][0]
                 if np.max(abs(dXY)) > threshold:
@@ -290,14 +290,18 @@ class Sort(object):
         # 'rightKnee: 14', 'leftAnkle: 15', 'rightAnkle: 16']
         # print(posenet.PART_NAMES[5], keypoint_scores[0, 5])
         
-        # [{sort_id: [keypoint_coords, movement, is_dead, is_passed]}, 
+        # [{sort_id: [keypoint_coords, rate_changes, movement, is_failed, is_passed]}, 
         # ...,
         # sort_id: []]
         # movement=0 안움직임, movement=1 움직임
-        # is_dead=0 살음, is_dead=1 죽음
+        # is_failed=0 정상, is_failed=1 실패
         # is_passed=0 통과하지못함 is_passed=1 통과함
 
-        return np.empty((0, 5))
+
+    def excute_drop_off(self, status):
+
+        
+        return status
 
 
 def parse_args():

@@ -42,6 +42,7 @@ for i, img_input in enumerate(img_inputs):
 
 # 여기까지 구현끗!!!!!
 
+
   """
   miss 타겟 Exception handling module
   """
@@ -65,6 +66,7 @@ for i, img_input in enumerate(img_inputs):
         # value가 dead인 참가자의 탈락 sound 재생
         # output: [{sort_id: [last_coord, movement, is_alive, goal]}, ..., sort_id: []]
 
+
   """
   통과자 module (밑에다가 라인 기준으로, 넘어가면, excute() 안돌림)
   """
@@ -72,7 +74,7 @@ for i, img_input in enumerate(img_inputs):
         if any(foot_coord) < y축라인값:
             cv2.puttext(f'{matched_id_and_number[sort_id]}번 참가자 통과')
         # output: [{sort_id: [번호표, last_coord, movement, is_alive, goal]}, ..., sort_id: []]
-        
+
 
 
 """

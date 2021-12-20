@@ -103,9 +103,15 @@ def draw_skel_and_kp(
     
     # 움직임 여부 시각화
     for k, v in status.items():
+        x1 = int(v[0][-1][0][1])
+        y1 = int(v[0][-1][0][0])
         if v[1] == 1:
-            x1 = int(v[0][-1][0][1])
-            y1 = int(v[0][-1][0][0])
-            cv2.putText(out_img, 'Moving', (x1, y1), cv2.FONT_HERSHEY_PLAIN, 5, [255,0,0], 5)
+            cv2.putText(out_img, 'Moving', (x1, y1), cv2.FONT_HERSHEY_PLAIN, 5, [0,0,255], 5)
+        # else:
+        #     cv2.putText(out_img, 'Stopping', (x1, y1), cv2.FONT_HERSHEY_PLAIN, 5, [255,0,0], 5)
 
     return out_img
+
+
+
+
