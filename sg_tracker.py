@@ -26,6 +26,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
 
+from collections import defaultdict
 
 np.random.seed(0)
 
@@ -213,6 +214,9 @@ class Sort(object):
         self.iou_threshold = iou_threshold
         self.trackers = []
         self.frame_count = 0
+        self.avg_of_coords = defaultdict(list)
+        self.stack_volumn = 10
+
 
     def update(self, dets=np.empty((0, 5))):
         """
@@ -268,19 +272,40 @@ class Sort(object):
             else:
                 v[0] = np.append(np.array(v[0]), np.expand_dims(np.array(v[0][-1]), 0), axis=0)
 
-            if len(v[0]) > 20:
+            if len(v[0]) > self.stack_volumn:
                 v[0] = np.delete(v[0], 0, 0)
         return status
 
 
-    def movement_tracker(self, status, threshold=70):
-        if len(status[1][0]) == 20:
+    def movement_tracker(self, status, threshold):
+        if len(status[1][0]) == self.stack_volumn:
             for k, v in status.items():
-                dXY = v[0][-1] - v[0][0]
-                if np.max(abs(dXY)) > threshold:
+                flatten_dim = v[0].shape[1] * v[0].shape[2]
+                flatten_coords = v[0].reshape(self.stack_volumn, flatten_dim)
+                avg_of_coord = flatten_coords.mean(axis=0).reshape(1, v[0].shape[1], v[0].shape[2])
+
+                self.avg_of_coords[k].append(avg_of_coord)
+
+                if len(self.avg_of_coords[k]) > self.stack_volumn:
+                    del self.avg_of_coords[k][0]
+
+                dXY = self.avg_of_coords[k][-1] - self.avg_of_coords[k][0]
+
+                max_dXY = np.max(abs(dXY))
+                if max_dXY > threshold:
                     status[k][1] = 1
                 else:
                     status[k][1] = 0
+
+
+            # for k, v in status.items():
+            #     dXY = v[0][-1] - v[0][0]
+            #     max_dXY = np.max(abs(dXY))
+            #     if max_dXY > threshold:
+            #         status[k][1] = 1
+            #     else:
+            #         status[k][1] = 0
+        
         return status
 
         # ['nose: 0, 'leftEye: 1', 'rightEye: 2', 'leftEar: 3', 'rightEar :4',
@@ -290,17 +315,17 @@ class Sort(object):
         # 'rightKnee: 14', 'leftAnkle: 15', 'rightAnkle: 16']
         # print(posenet.PART_NAMES[5], keypoint_scores[0, 5])
         
-        # [{sort_id: [keypoint_coords, rate_changes, movement, is_failed, is_passed]}, 
-        # ...,
-        # sort_id: []]
+        # [{sort_id: [keypoint_coords, rate_changes, movement, is_failed, is_passed]}, ...,
         # movement=0 안움직임, movement=1 움직임
         # is_failed=0 정상, is_failed=1 실패
         # is_passed=0 통과하지못함 is_passed=1 통과함
 
 
     def excute_drop_off(self, status):
-
-        
+        if len(status[1][0]) == self.stack_volumn:
+            for k, v in status.items():
+                if status[k][1] == 1:
+                    status[k][2] = 1
         return status
 
 

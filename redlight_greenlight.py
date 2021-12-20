@@ -149,20 +149,23 @@ def main():
         if frame_count > 1:
 
             status = tracker.update_status(status, match_kp_sortid)
-            status = tracker.movement_tracker(status, threshold=60)
+            status = tracker.movement_tracker(status, threshold=30)
+
+        if num_frames > 20:
+            status = tracker.excute_drop_off(status)
         # [{sort_id: [keypoint_coords, movement, is_fail, is_passed]}, 
         # ..., 
         # sort_id: []]
         # movement=0 안움직임, movement=1 움직임
         # is_dead=0 살음, is_dead=1 죽음
         # is_passed=0 통과하지못함 is_passed=1 통과함
-
+        
 
         # Draw result(키포인트 시각화)
+        # if num_frames > 10:
         overlay_image = posenet.draw_skel_and_kp(
             status, display_image, pose_scores, keypoint_scores, keypoint_coords,
             min_pose_score=0.15, min_part_score=0.1)
-
 
 
         overlay_image = cv2.resize(overlay_image, dsize=(1000, 640), interpolation=cv2.INTER_AREA)
