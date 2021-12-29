@@ -31,6 +31,15 @@ from collections import defaultdict
 np.random.seed(0)
 
 
+def get_iou_idx(matrix_1, matrix_2):
+    """
+    """
+    iou_matrix = iou_batch(matrix_1, matrix_2)
+    match_iou = np.argmax(iou_matrix, axis=1)
+
+    return match_iou
+
+
 def linear_assignment(cost_matrix):
     try:
         import lap
@@ -265,7 +274,12 @@ class Sort(object):
             return np.concatenate(ret)
     
     
-    def update_status(self, status, match_kp_sortid):
+    def update_coords_history(self, status, match_kp_sortid):
+        """
+        return: [{sort_id: [keypoint_coords, movement, is_fail, is_passed],...,}
+        if 0, movement is stop, participants alive,, passed yet
+        else movement is moving, participants dropoff, passed game
+        """
         for k, v in status.items():
             if k in match_kp_sortid:
                 v[0] = np.append(np.array(v[0]), np.expand_dims(match_kp_sortid[k], 0), axis=0)
@@ -277,13 +291,13 @@ class Sort(object):
         return status
 
 
-    def movement_tracker(self, status, threshold):
+    def track_movement(self, status, threshold):
+        # Calculate Moving Average(based on 10~20 frames)
         if len(status[1][0]) == self.stack_volumn:
             for k, v in status.items():
                 flatten_dim = v[0].shape[1] * v[0].shape[2]
                 flatten_coords = v[0].reshape(self.stack_volumn, flatten_dim)
                 avg_of_coord = flatten_coords.mean(axis=0).reshape(1, v[0].shape[1], v[0].shape[2])
-
                 self.avg_of_coords[k].append(avg_of_coord)
 
                 if len(self.avg_of_coords[k]) > self.stack_volumn:
@@ -296,7 +310,6 @@ class Sort(object):
                     status[k][1] = 1
                 else:
                     status[k][1] = 0
-
 
             # for k, v in status.items():
             #     dXY = v[0][-1] - v[0][0]
@@ -315,11 +328,6 @@ class Sort(object):
         # 'rightKnee: 14', 'leftAnkle: 15', 'rightAnkle: 16']
         # print(posenet.PART_NAMES[5], keypoint_scores[0, 5])
         
-        # [{sort_id: [keypoint_coords, rate_changes, movement, is_failed, is_passed]}, ...,
-        # movement=0 안움직임, movement=1 움직임
-        # is_failed=0 정상, is_failed=1 실패
-        # is_passed=0 통과하지못함 is_passed=1 통과함
-
 
     def excute_drop_off(self, status):
         if len(status[1][0]) == self.stack_volumn:
@@ -327,6 +335,19 @@ class Sort(object):
                 if status[k][1] == 1:
                     status[k][2] = 1
         return status
+    
+
+    def passed_participants(self, status, threshold = 950):
+        for k, v in status.items():
+            y_axis_max_ankle = np.max(status[k][0][-1][15:17][:,0])
+            # print(f'{k}번째 사람 발목좌표:{np.max(status[k][0][-1][15:17][:,0])}')
+            if y_axis_max_ankle > threshold:
+                status[k][3] = 1
+                print(f'{k}번째사람: {status[k][3]} 좌표 {np.max(status[k][0][-1][15:17][:,0])}')
+        return status         
+
+# [{sort_id: [keypoint_coords, movement, is_fail, is_passed],...,}
+
 
 
 def parse_args():

@@ -3,13 +3,8 @@ import cv2
 import time
 import argparse
 
-import pytesseract
-from pytesseract import Output
-
 import posenet
 from sg_tracker import *
-
-pytesseract.pytesseract.tesseract_cmd = R'C:\Program Files\Tesseract-OCR\tesseract'
 
 
 parser = argparse.ArgumentParser()
@@ -26,16 +21,15 @@ def main():
     tracker = Sort()
     cap = cv2.VideoCapture('./video/demo_dance_3p_number_tag_1080p.mp4') # demo_dance_3p_number_tag_1080p
     ocr_thresh = 0.1
-    ocr_options = "outputbase digits"
     
-    # ocr_unique_number_hard = [[147, 200, 193, 220, 1], # Delete later
-    #                             [375, 171, 416, 242, 2], 
-    #                             [672, 188, 705, 209, 3]]
-
     start = time.time()
     frame_count = 0
     num_frames = 0
     status = dict()
+    match_kp_sortid = dict()
+    match_tag = dict()
+    movement_threshold = 30
+    is_passed_threshold = 950
 
     # out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'MP4V'), 30.0, (640,480))
 
@@ -60,117 +54,53 @@ def main():
 
         keypoint_coords *= output_scale
 
-        # 어깨+엉덩이 좌표에서 Bbox 좌표 뽑아내기(for OCR)
-        bbox_for_tracker = []
-        for pi in range(len(pose_scores)):
-
-            idxs = [5, 6, 11, 12]
-
-            x = keypoint_coords[pi, idxs, 1]
-            y = keypoint_coords[pi, idxs, 0] # (10, 17, 2)
-
-            x1 = min(x)
-            x2 = max(x)
-            y1 = min(y)
-            y2 = max(y)
-            
-            bbox_for_tracker.append([x1, y1, x2, y2, 0.5])
+        # Extract bbox coords from shoulder and hips(for OCR+SORT)
+        bbox_for_tracker = posenet.make_tracking_bbox(keypoint_coords)
 
         # SORT Tracking
-        track_bbs_ids = tracker.update(np.array(bbox_for_tracker[:3])) #하드코드
+        track_bbs_ids = tracker.update(np.array(bbox_for_tracker[:3]))
 
-        kp_iou_matrix = iou_batch(track_bbs_ids[:, :4], np.array(bbox_for_tracker[:3])[:, :4])
-        kp_match_iou = np.argmax(kp_iou_matrix, axis=1)
-
-        match_kp_sortid = dict()
+        # Get matching idx btw bbox from keypoint and bbox from SORT
+        kp_match_iou = get_iou_idx(track_bbs_ids[:, :4], np.array(bbox_for_tracker[:3])[:, :4])
 
         for i, kmi in enumerate(kp_match_iou):
             match_kp_sortid[int(track_bbs_ids[i,4])] = np.array(keypoint_coords[kmi])
         
-        # 0번프레임: Crop -> OCR실행 및 OCR 정보 리스트로 담기
+        # When frame count 0, Crop each participants -> run OCR and return OCR information
         if frame_count == 0:
-            ocr_unique_number = []
-            # crop_img = img[y:y+h, x:x+w]
-            for i, bbox in enumerate(bbox_for_tracker[:3]):
-                crop_weight = 20
+            ocr_unique_number = posenet.start_game(bbox_for_tracker[:3], display_image, ocr_thresh)
 
-                x1 = int(bbox[0]) - crop_weight
-                y1 = int(bbox[1])
-                x2 = int(bbox[2]) + crop_weight
-                y2 = int(bbox[3])
-
-                cropped_imgs = display_image[y1:y2, x1:x2, :]
-                ocr_results = pytesseract.image_to_data(cropped_imgs, output_type=Output.DICT, config=ocr_options)
-                texts = ocr_results['text']
-                confs = ocr_results['conf']
-                xs = ocr_results['left']
-                ys = ocr_results['top']
-                ws = ocr_results['width']
-                hs = ocr_results['height']
-
-
-                for conf, text, x, y, w, h in zip(confs, texts, xs, ys, ws, hs):
-                    if float(conf) > ocr_thresh:
-                        cropped_imgs = cv2.rectangle(cropped_imgs, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                        cropped_imgs = cv2.putText(cropped_imgs, text, (x, y+40), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
-
-                        cv2.imwrite(f'output/{i}th_person.jpg', cropped_imgs)
-                        ocr_unique_number.append([x1+x, y1+y, x1+x+w, y1+y+h, int(text)])
-                        # print(conf, text, [x, y, w ,h])
-
-        # 1번프레임: OCR 번호표 vs SORT_ID IOU 매칭
+        # When frame count 1, Matching IOU btw OCR bbox and SORT bbox coords
         elif frame_count == 1:
-            ocr_iou_matrix = iou_batch(track_bbs_ids[:, 0:4], np.array(ocr_unique_number)[:, 0:4])
-            ocr_match_iou = np.argmax(ocr_iou_matrix, axis=1)
-
-            match_tag = dict()
+            ocr_match_iou = get_iou_idx(track_bbs_ids[:, :4], np.array(ocr_unique_number)[:, :4])
 
             for i, mi in enumerate(ocr_match_iou):
                 match_tag[int(track_bbs_ids[i,4])] = str(mi+1).zfill(3)
                 status[int(track_bbs_ids[i,4])] = [np.expand_dims(keypoint_coords[i,:,:], 0), 0, 0, 0]
 
-        # SORT ID 시각화 및 아웃풋 리턴
-        for track_bbs_id in track_bbs_ids:
-            x1 = int(track_bbs_id[0])
-            y1 = int(track_bbs_id[1])
-            x2 = int(track_bbs_id[2])
-            y2 = int(track_bbs_id[3])
-            unique_id = str(int(track_bbs_id[4]))
+        # Visualize Participants number
+        display_image = posenet.viz_participants_number(track_bbs_ids, display_image, match_tag, frame_count)
+        
+        # Visualize passing line
+        display_image = posenet.draw_passing_line(display_image, is_passed_threshold)
 
-            t_size = cv2.getTextSize(unique_id, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
-            # cv2.putText(display_image, unique_id, (x1, y1 + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 5, [0,0,0], 5)
-            
-            if frame_count == 0:
-                cv2.putText(display_image, unique_id, (x1, y1 + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 5, [0,0,0], 5)
-            else:
-                cv2.putText(display_image, match_tag[int(unique_id)], (x1, y1 + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 2, [0,0,255], 2)
-
-        # 상태 갱신 모듈
+        # Update status
         if frame_count > 1:
-
-            status = tracker.update_status(status, match_kp_sortid)
-            status = tracker.movement_tracker(status, threshold=30)
+            status = tracker.update_coords_history(status, match_kp_sortid)
+            status = tracker.track_movement(status, threshold=movement_threshold)
+            status = tracker.passed_participants(status, threshold = is_passed_threshold)
 
         if num_frames > 20:
             status = tracker.excute_drop_off(status)
-        # [{sort_id: [keypoint_coords, movement, is_fail, is_passed]}, 
-        # ..., 
-        # sort_id: []]
-        # movement=0 안움직임, movement=1 움직임
-        # is_dead=0 살음, is_dead=1 죽음
-        # is_passed=0 통과하지못함 is_passed=1 통과함
-        
 
-        # Draw result(키포인트 시각화)
-        # if num_frames > 10:
+        # Draw Keypoint results, and status(if moving, failed, passed)
         overlay_image = posenet.draw_skel_and_kp(
             status, display_image, pose_scores, keypoint_scores, keypoint_coords,
-            min_pose_score=0.15, min_part_score=0.1)
+            min_pose_score=0.15, min_part_score=0.01)
 
 
         overlay_image = cv2.resize(overlay_image, dsize=(1000, 640), interpolation=cv2.INTER_AREA)
         cv2.imshow('posenet', overlay_image)
-        # out.write(overlay_image)
         frame_count += 1
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

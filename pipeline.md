@@ -38,7 +38,26 @@ for i, img_input in enumerate(img_inputs):
       # 움직임의 이동평균으로 계산
       # output: [{sort_id: [last_coord, movement, is_alive, goal]}, ..., sort_id: []]
 
-# TODO Threshold 조정 및 평균, 변화율, 연속성(output자체의)
+
+
+  """
+  처형 module(제어문)
+  """
+    if 움직임이 있는 참가자의 경우:
+        excute(movement)
+        sound(f'{matched_id_and_number[sort_id]}번 참가자 탈락')
+        # value가 dead인 참가자의 탈락 sound 재생
+        # output: [{sort_id: [last_coord, movement, is_alive, goal]}, ..., sort_id: []]
+
+
+
+  """
+  통과자 module (밑에다가 라인 기준으로, 넘어가면, excute() 안돌림)
+  """
+    if 사망하지 않은 참가자 중에서:
+        if any(foot_coord) < y축라인값:
+            cv2.puttext(f'{matched_id_and_number[sort_id]}번 참가자 통과')
+        # output: [{sort_id: [번호표, last_coord, movement, is_alive, goal]}, ..., sort_id: []]
 
 # 여기까지 구현끗!!!!!
 
@@ -54,27 +73,9 @@ for i, img_input in enumerate(img_inputs):
   # 두명이상 정보를 잃어버렸을때
   elif det_bboxes_ids.shape[0] < num_of_participants.shape[0]-1:
       # challenge_1: 잃어버리기 전 최근 좌표를 기록해두고 가까운 값을 채택
-      # challenge_2: 잃어버리기 전 최근의 dx, dy 값으로 기울기를 지속적으로 기록해두고 (이동평균) 다시 정보를 얻었을 때 기울기로 예측 
+      # challenge_2: 잃어버리기 전 최근의 dx, dy 값으로 기울기를 지속적으로 기록해두고 (이동평균) 다시 정보를 얻었을 때 기울기로 예측
 
-
-  """
-  처형 module(제어문)
-  """
-    if 움직임이 있는 참가자의 경우:
-        excute(movement)
-        sound(f'{matched_id_and_number[sort_id]}번 참가자 탈락')
-        # value가 dead인 참가자의 탈락 sound 재생
-        # output: [{sort_id: [last_coord, movement, is_alive, goal]}, ..., sort_id: []]
-
-
-  """
-  통과자 module (밑에다가 라인 기준으로, 넘어가면, excute() 안돌림)
-  """
-    if 사망하지 않은 참가자 중에서:
-        if any(foot_coord) < y축라인값:
-            cv2.puttext(f'{matched_id_and_number[sort_id]}번 참가자 통과')
-        # output: [{sort_id: [번호표, last_coord, movement, is_alive, goal]}, ..., sort_id: []]
-
+# TODO Threshold 조정 및 평균, 변화율, 연속성(output자체의)
 
 
 """
